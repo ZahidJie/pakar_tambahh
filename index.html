@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakar Tambah - Permainan Matematik Interaktif Jari</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- MediaPipe Hands CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    
+    <!-- Tone.js untuk Kesan Bunyi Sintesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Canvas Confetti untuk Animasi Kejayaan -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            user-select: none;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        .font-num {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Styling Video Mirroring */
+        #webcam {
+            transform: scaleX(-1);
+        }
+
+        /* Mystery Box Styles & Animations */
+        .gift-box {
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+        }
+
+        .gift-box:hover, .gift-box.hovered {
+            transform: scale(1.06);
+            box-shadow: 0 20px 30px -10px rgba(251, 191, 36, 0.5);
+        }
+
+        /* Gift Lid Hover Animation */
+        .gift-box.hovered .gift-lid {
+            transform: translateY(-8px) rotate(-4deg);
+        }
+
+        /* Opening Box Animation */
+        @keyframes openGiftLid {
+            0% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-35px) rotate(-20deg) scale(1.1); }
+            100% { transform: translateY(-70px) rotate(-45deg) scale(0); opacity: 0; }
+        }
+
+        .gift-box.opening .gift-lid {
+            animation: openGiftLid 0.6s forwards ease-out;
+        }
+
+        /* Shake Animation for Wrong Answer */
+        @keyframes shakeBox {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-12px) rotate(-3deg); }
+            40% { transform: translateX(12px) rotate(3deg); }
+            60% { transform: translateX(-8px) rotate(-2deg); }
+            80% { transform: translateX(8px) rotate(2deg); }
+        }
+
+        .gift-box.wrong {
+            animation: shakeBox 0.5s ease-in-out;
+            border-color: #ef4444 !important;
+            background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+        }
+
+        /* Floating Animation */
+        @keyframes gentleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .animate-float {
+            animation: gentleFloat 3s infinite ease-in-out;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .glass-box {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(8px);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Radial Dwell Progress Circle */
+        .dwell-circle {
+            transition: stroke-dashoffset 0.05s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Glowing Text */
+        .glow-text {
+            text-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(245, 158, 11, 0.4);
+        }
+        
+        .glow-green {
+            text-shadow: 0 0 15px rgba(34, 197, 94, 0.8);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative select-none bg-slate-950 text-white">
+
+    <!-- Audio Permission Context Enabler overlay trigger -->
+    <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+        <div class="max-w-xl w-full bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden">
+            <!-- Decorative elements -->
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl"></div>
+            
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-500/20 text-amber-400 text-4xl mb-4 border border-amber-500/30">
+                🎁
+            </div>
+            
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 mb-2">
+                PAKAR TAMBAH
+            </h1>
+            <p class="text-slate-300 text-base md:text-lg mb-6">
+                Matematik Sekolah Rendah • Operasi Tambah Lingkungan 1000 (Tanpa Pengumpulan Semula)
+            </p>
+
+            <div class="bg-slate-800/80 rounded-2xl p-4 text-left mb-6 border border-slate-700/60 space-y-3">
+                <h3 class="text-amber-400 font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad"></i> Cara Bermain:
+                </h3>
+                <ul class="text-slate-300 text-sm space-y-2">
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-500/20 text-amber-400 w-5 h-5 rounded-full flex items-center justify-center text-xs mt-0.5 flex-shrink-0 font-bold">1</span>
+                        <span>Aktifkan <b>Kamera Webcam</b> & benarkan akses video.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-500/20 text-amber-400 w-5 h-5 rounded-full flex items-center justify-center text-xs mt-0.5 flex-shrink-0 font-bold">2</span>
+                        <span>Tunjukkan <b>Jari Telunjuk</b> anda ke arah kamera untuk mengawal kursor magic.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="bg-amber-500/20 text-amber-400 w-5 h-5 rounded-full flex items-center justify-center text-xs mt-0.5 flex-shrink-0 font-bold">3</span>
+                        <span>Halakan dan <b>Tahan Jari (Dwell 1 Saat)</b> di atas Kotak Hadiah dengan jawapan yang betul!</span>
+                    </li>
+                    <li class="flex items-start gap-2 text-slate-400 text-xs">
+                        <i class="fa-solid fa-circle-info text-amber-400 mt-0.5"></i>
+                        <span>Boleh juga menggunakan <b>Tetikus / Sentuhan Skrin</b> sekiranya tiada kamera.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                <button id="btn-start-cam" onclick="startGame('camera')" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-camera text-xl"></i>
+                    Mula (Mod Kamera Jari)
+                </button>
+                <button id="btn-start-mouse" onclick="startGame('mouse')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-bold py-3.5 px-4 rounded-xl transition active:scale-95 flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-mouse-pointer text-xl"></i>
+                    Mod Tetikus / Sentuh
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-400">
+                <i class="fa-solid fa-shield-halved"></i> Privasi terjamin: Video kamera dianalisis secara setempat dalam penyemak imbas anda sahaja.
+            </p>
+        </div>
+    </div>
+
+    <!-- MAIN GAME CONTAINER -->
+    <div class="w-full h-full relative flex flex-col justify-between p-3 md:p-5">
+        
+        <!-- TOP NAVBAR / HUD -->
+        <header class="w-full z-20 flex justify-between items-center glass-card px-4 py-3 rounded-2xl shadow-xl">
+            <!-- Brand / Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg text-xl">
+                    🎁
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold text-amber-400 leading-none">PAKAR TAMBAH</h1>
+                    <p class="text-xs text-slate-300 font-sans hidden sm:block">Matematik Sekolah Rendah</p>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex items-center gap-3 md:gap-6 font-num">
+                <!-- Streak / Combo -->
+                <div class="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl">
+                    <i class="fa-solid fa-fire text-orange-500 text-lg animate-bounce"></i>
+                    <div class="text-left">
+                        <div class="text-[10px] text-amber-400 font-bold uppercase leading-none">Kombo</div>
+                        <div id="streak-val" class="text-base font-extrabold text-amber-300 leading-none">x0</div>
+                    </div>
+                </div>
+
+                <!-- Score -->
+                <div class="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 px-3.5 py-1.5 rounded-xl">
+                    <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                    <div class="text-left">
+                        <div class="text-[10px] text-indigo-300 font-bold uppercase leading-none">Skor</div>
+                        <div id="score-val" class="text-lg font-extrabold text-white leading-none">0</div>
+                    </div>
+                </div>
+
+                <!-- Timer -->
+                <div class="flex items-center gap-2 bg-rose-500/10 border border-rose-500/30 px-3.5 py-1.5 rounded-xl">
+                    <i class="fa-solid fa-clock text-rose-400 text-lg"></i>
+                    <div class="text-left">
+                        <div class="text-[10px] text-rose-300 font-bold uppercase leading-none">Masa</div>
+                        <div id="timer-val" class="text-lg font-extrabold text-rose-300 leading-none">60s</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls (Toggle Input & Mute) -->
+            <div class="flex items-center gap-2">
+                <button id="toggle-input-btn" onclick="toggleInputMode()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 p-2.5 rounded-xl transition text-sm flex items-center gap-2" title="Tukar Mod Kawalan">
+                    <i id="input-icon" class="fa-solid fa-camera text-amber-400"></i>
+                    <span id="input-text" class="hidden lg:inline text-xs font-bold">Kamera</span>
+                </button>
+                <button id="audio-btn" onclick="toggleAudio()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 p-2.5 rounded-xl transition text-sm" title="Bisu / Bunyi">
+                    <i id="audio-icon" class="fa-solid fa-volume-high text-green-400"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- WEBCAM & CANVAS DISPLAY AREA (BACKGROUND LAYER) -->
+        <div class="absolute inset-0 z-0 overflow-hidden flex items-center justify-center bg-slate-950">
+            <!-- Hidden raw video element -->
+            <video id="webcam" class="absolute w-full h-full object-cover opacity-30 transform scale-x-[-1]" playsinline></video>
+            
+            <!-- Canvas overlay for hand tracking visuals & cursors -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"></canvas>
+            
+            <!-- Dynamic Notification Toast -->
+            <div id="feedback-toast" class="absolute top-28 z-30 pointer-events-none transition-all duration-300 transform -translate-y-10 opacity-0 scale-90">
+                <div id="feedback-bg" class="px-6 py-2.5 rounded-2xl shadow-2xl border-2 flex items-center gap-3 text-lg md:text-xl font-extrabold">
+                    <span id="feedback-icon">✨</span>
+                    <span id="feedback-text">Tahniah!</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER QUESTION DISPLAY BOARD -->
+        <div class="relative z-20 self-center my-auto w-full max-w-xl">
+            <div class="glass-card bg-slate-900/80 rounded-3xl p-5 md:p-7 text-center border-2 border-amber-400/40 shadow-2xl animate-float">
+                <div class="inline-block px-3 py-1 bg-amber-500/20 border border-amber-400/30 rounded-full text-xs font-bold text-amber-300 mb-2 tracking-wide uppercase">
+                    Operasi Tambah (Tanpa Pengumpulan Semula)
+                </div>
+                
+                <!-- Math Problem Display -->
+                <div class="flex items-center justify-center gap-2 sm:gap-4 my-2">
+                    <span id="equation-text" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-num text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 glow-text tracking-wider">
+                        234 + 123 = ?
+                    </span>
+                </div>
+
+                <p class="text-xs md:text-sm text-slate-300 font-medium">
+                    <i class="fa-solid fa-hand-pointer text-amber-400 mr-1"></i> Halakan jari & tahan 1 saat pada hadiah jawapan yang betul!
+                </p>
+            </div>
+        </div>
+
+        <!-- 4 MYSTERY GIFT BOXES (FOUR CORNERS / SECTIONS) -->
+        <div id="boxes-container" class="relative z-20 w-full grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 max-w-6xl mx-auto pb-2">
+            
+            <!-- Box 0 -->
+            <div id="box-0" onclick="handleBoxClick(0)" class="gift-box glass-box relative rounded-2xl p-4 cursor-pointer flex flex-col items-center justify-between border-amber-400/30 bg-slate-900/85 hover:border-amber-400">
+                <!-- Dwell Progress Ring SVG -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none rounded-2xl z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <rect class="dwell-border" x="2" y="2" width="96" height="96" rx="14" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="384" stroke-dashoffset="384"/>
+                </svg>
+                
+                <!-- Gift Lid & Ribbon -->
+                <div class="gift-lid relative w-16 h-12 flex items-center justify-center my-1 transition-transform duration-300">
+                    <div class="text-4xl drop-shadow-md">🎁</div>
+                </div>
+                
+                <!-- Option Value -->
+                <div class="text-3xl sm:text-4xl md:text-5xl font-extrabold font-num text-white mt-1 group-hover:text-amber-300">
+                    <span id="opt-0">357</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase mt-1">Kotak Hadiah A</div>
+            </div>
+
+            <!-- Box 1 -->
+            <div id="box-1" onclick="handleBoxClick(1)" class="gift-box glass-box relative rounded-2xl p-4 cursor-pointer flex flex-col items-center justify-between border-amber-400/30 bg-slate-900/85 hover:border-amber-400">
+                <svg class="absolute inset-0 w-full h-full pointer-events-none rounded-2xl z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <rect class="dwell-border" x="2" y="2" width="96" height="96" rx="14" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="384" stroke-dashoffset="384"/>
+                </svg>
+                <div class="gift-lid relative w-16 h-12 flex items-center justify-center my-1 transition-transform duration-300">
+                    <div class="text-4xl drop-shadow-md">🎁</div>
+                </div>
+                <div class="text-3xl sm:text-4xl md:text-5xl font-extrabold font-num text-white mt-1 group-hover:text-amber-300">
+                    <span id="opt-1">245</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase mt-1">Kotak Hadiah B</div>
+            </div>
+
+            <!-- Box 2 -->
+            <div id="box-2" onclick="handleBoxClick(2)" class="gift-box glass-box relative rounded-2xl p-4 cursor-pointer flex flex-col items-center justify-between border-amber-400/30 bg-slate-900/85 hover:border-amber-400">
+                <svg class="absolute inset-0 w-full h-full pointer-events-none rounded-2xl z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <rect class="dwell-border" x="2" y="2" width="96" height="96" rx="14" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="384" stroke-dashoffset="384"/>
+                </svg>
+                <div class="gift-lid relative w-16 h-12 flex items-center justify-center my-1 transition-transform duration-300">
+                    <div class="text-4xl drop-shadow-md">🎁</div>
+                </div>
+                <div class="text-3xl sm:text-4xl md:text-5xl font-extrabold font-num text-white mt-1 group-hover:text-amber-300">
+                    <span id="opt-2">359</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase mt-1">Kotak Hadiah C</div>
+            </div>
+
+            <!-- Box 3 -->
+            <div id="box-3" onclick="handleBoxClick(3)" class="gift-box glass-box relative rounded-2xl p-4 cursor-pointer flex flex-col items-center justify-between border-amber-400/30 bg-slate-900/85 hover:border-amber-400">
+                <svg class="absolute inset-0 w-full h-full pointer-events-none rounded-2xl z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <rect class="dwell-border" x="2" y="2" width="96" height="96" rx="14" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="384" stroke-dashoffset="384"/>
+                </svg>
+                <div class="gift-lid relative w-16 h-12 flex items-center justify-center my-1 transition-transform duration-300">
+                    <div class="text-4xl drop-shadow-md">🎁</div>
+                </div>
+                <div class="text-3xl sm:text-4xl md:text-5xl font-extrabold font-num text-white mt-1 group-hover:text-amber-300">
+                    <span id="opt-3">412</span>
+                </div>
+                <div class="text-[10px] text-slate-400 font-semibold uppercase mt-1">Kotak Hadiah D</div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- GAME OVER / HIGH SCORE MODAL -->
+    <div id="game-over-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md hidden p-4">
+        <div class="max-w-lg w-full bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden">
+            <div class="w-20 h-20 bg-amber-500/20 text-amber-400 rounded-3xl flex items-center justify-center mx-auto text-4xl mb-4 border border-amber-500/30">
+                🏆
+            </div>
+            
+            <h2 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 mb-1">
+                MASA TAMAT!
+            </h2>
+            <p class="text-slate-300 text-sm mb-6">Syabas! Anda telah menyelesaikan cabaran matematik tambah!</p>
+
+            <!-- Score Summary Card -->
+            <div class="bg-slate-800/90 rounded-2xl p-4 mb-6 border border-slate-700 grid grid-cols-2 gap-4">
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400 font-bold uppercase">Jumlah Skor</div>
+                    <div id="final-score" class="text-3xl font-extrabold text-amber-400 font-num">0</div>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400 font-bold uppercase">Jawapan Betul</div>
+                    <div id="final-correct" class="text-3xl font-extrabold text-green-400 font-num">0</div>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400 font-bold uppercase">Kombo Tertinggi</div>
+                    <div id="final-streak" class="text-2xl font-extrabold text-orange-400 font-num">0x</div>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-400 font-bold uppercase">Ketepatan</div>
+                    <div id="final-accuracy" class="text-2xl font-extrabold text-indigo-400 font-num">100%</div>
+                </div>
+            </div>
+
+            <!-- High Scores Section -->
+            <div class="mb-6 text-left">
+                <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-trophy"></i> Rekod Skor Tertinggi Tempatan:
+                </div>
+                <div id="high-scores-list" class="bg-slate-950/70 rounded-xl p-3 border border-slate-800 text-sm space-y-1.5 font-num">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold py-3.5 px-6 rounded-xl shadow-lg transition active:scale-95 text-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>
+                Main Lagi
+            </button>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /**
+         * PAKAR TAMBAH - Game Logic & MediaPipe Integration
+         */
+
+        // Game Configuration & State
+        const DWELL_TIME_MS = 1000; // 1 second dwell required to trigger box selection
+        let inputMode = 'camera'; // 'camera' or 'mouse'
+        let audioEnabled = true;
+        
+        let score = 0;
+        let streak = 0;
+        let maxStreak = 0;
+        let totalAnswered = 0;
+        let correctCount = 0;
+        let timeLeft = 60;
+        let timerInterval = null;
+        let isGameActive = false;
+
+        // Current Math Problem State
+        let currentProblem = null;
+        let hoveredBoxIndex = -1;
+        let dwellStartTime = null;
+        let isProcessingChoice = false;
+
+        // Cursor coordinates & smoothing
+        let rawCursorX = window.innerWidth / 2;
+        let rawCursorY = window.innerHeight / 2;
+        let smoothCursorX = window.innerWidth / 2;
+        let smoothCursorY = window.innerHeight / 2;
+        const SMOOTHING = 0.35; // Smoothing factor (0.1 = smooth/slow, 0.9 = fast/jittery)
+
+        // DOM Elements
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('gameCanvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverModal = document.getElementById('game-over-modal');
+
+        // Audio Synths (Tone.js)
+        let soundStarted = false;
+        let polySynth, chimeSynth, wrongSynth, tickSynth;
+
+        function initAudio() {
+            if (soundStarted) return;
+            try {
+                Tone.start();
+                polySynth = new Tone.PolySynth(Tone.Synth).toDestination();
+                polySynth.volume.value = -8;
+
+                chimeSynth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.4 }
+                }).toDestination();
+
+                wrongSynth = new Tone.Synth({
+                    oscillator: { type: "sawtooth" },
+                    envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.1 }
+                }).toDestination();
+                wrongSynth.volume.value = -4;
+
+                tickSynth = new Tone.MembraneSynth().toDestination();
+                tickSynth.volume.value = -14;
+
+                soundStarted = true;
+            } catch (e) {
+                console.warn("Audio initialization error:", e);
+            }
+        }
+
+        function playCorrectSound() {
+            if (!audioEnabled || !soundStarted) return;
+            const now = Tone.now();
+            chimeSynth.triggerAttackRelease("C5", "8n", now);
+            chimeSynth.triggerAttackRelease("E5", "8n", now + 0.08);
+            chimeSynth.triggerAttackRelease("G5", "8n", now + 0.16);
+            chimeSynth.triggerAttackRelease("C6", "4n", now + 0.24);
+        }
+
+        function playWrongSound() {
+            if (!audioEnabled || !soundStarted) return;
+            const now = Tone.now();
+            wrongSynth.triggerAttackRelease("G3", "8n", now);
+            wrongSynth.triggerAttackRelease("C3", "4n", now + 0.12);
+        }
+
+        function playTickSound() {
+            if (!audioEnabled || !soundStarted) return;
+            tickSynth.triggerAttackRelease("C6", "32n");
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('audio-icon');
+            if (audioEnabled) {
+                btn.className = 'fa-solid fa-volume-high text-green-400';
+            } else {
+                btn.className = 'fa-solid fa-volume-xmark text-slate-500';
+            }
+        }
+
+        // Window resize canvas listener
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mouse tracking listener for mouse mode fallback
+        window.addEventListener('mousemove', (e) => {
+            if (inputMode === 'mouse') {
+                rawCursorX = e.clientX;
+                rawCursorY = e.clientY;
+            }
+        });
+
+        // Touch tracking listener
+        window.addEventListener('touchmove', (e) => {
+            if (inputMode === 'mouse' && e.touches.length > 0) {
+                rawCursorX = e.touches[0].clientX;
+                rawCursorY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        /**
+         * MATH GENERATOR: Addition without regrouping (Tanpa Pengumpulan Semula) <= 1000
+         */
+        function generateProblem() {
+            // Generate digits such that d1 + d2 <= 9 for hundreds, tens, ones
+            const h1 = Math.floor(Math.random() * 8) + 1; // 1..8
+            const h2 = Math.floor(Math.random() * (9 - h1 + 1)); // 0..(9-h1)
+
+            const t1 = Math.floor(Math.random() * 10); // 0..9
+            const t2 = Math.floor(Math.random() * (9 - t1 + 1)); // 0..(9-t1)
+
+            const o1 = Math.floor(Math.random() * 10); // 0..9
+            const o2 = Math.floor(Math.random() * (9 - o1 + 1)); // 0..(9-o1)
+
+            const num1 = h1 * 100 + t1 * 10 + o1;
+            const num2 = h2 * 100 + t2 * 10 + o2;
+            const answer = num1 + num2;
+
+            // Generate 3 clever distractors (without duplicate answers)
+            const distractors = new Set();
+            const deltaOptions = [-10, 10, -1, 1, -100, 100, -2, 2, 20, -20];
+            
+            while (distractors.size < 3) {
+                const delta = deltaOptions[Math.floor(Math.random() * deltaOptions.length)];
+                const dist = answer + delta;
+                if (dist > 0 && dist <= 999 && dist !== answer) {
+                    distractors.add(dist);
+                }
+            }
+
+            const options = [answer, ...Array.from(distractors)];
+            // Shuffle choices randomly
+            options.sort(() => Math.random() - 0.5);
+
+            return {
+                num1,
+                num2,
+                answer,
+                options,
+                correctIndex: options.indexOf(answer)
+            };
+        }
+
+        // Display current problem on screen
+        function renderProblem() {
+            currentProblem = generateProblem();
+            document.getElementById('equation-text').innerText = `${currentProblem.num1} + ${currentProblem.num2} = ?`;
+            
+            for (let i = 0; i < 4; i++) {
+                const optEl = document.getElementById(`opt-${i}`);
+                const boxEl = document.getElementById(`box-${i}`);
+                optEl.innerText = currentProblem.options[i];
+                
+                // Reset styles
+                boxEl.classList.remove('hovered', 'opening', 'wrong');
+                updateBoxDwellProgress(i, 0);
+            }
+            isProcessingChoice = false;
+        }
+
+        /**
+         * START & CONTROL FLOW
+         */
+        let camera = null;
+        let hands = null;
+
+        function startGame(mode) {
+            initAudio();
+            inputMode = mode;
+            startScreen.classList.add('hidden');
+            
+            updateInputModeUI();
+
+            if (mode === 'camera') {
+                initMediaPipe();
+            }
+
+            resetStats();
+            isGameActive = true;
+            renderProblem();
+            startTimer();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function toggleInputMode() {
+            if (inputMode === 'camera') {
+                inputMode = 'mouse';
+                if (videoElement.srcObject) {
+                    const tracks = videoElement.srcObject.getTracks();
+                    tracks.forEach(track => track.stop());
+                }
+            } else {
+                inputMode = 'camera';
+                initMediaPipe();
+            }
+            updateInputModeUI();
+        }
+
+        function updateInputModeUI() {
+            const icon = document.getElementById('input-icon');
+            const text = document.getElementById('input-text');
+            if (inputMode === 'camera') {
+                icon.className = 'fa-solid fa-camera text-amber-400';
+                text.innerText = 'Kamera Jari';
+            } else {
+                icon.className = 'fa-solid fa-mouse-pointer text-indigo-400';
+                text.innerText = 'Tetikus / Sentuh';
+            }
+        }
+
+        function resetStats() {
+            score = 0;
+            streak = 0;
+            maxStreak = 0;
+            totalAnswered = 0;
+            correctCount = 0;
+            timeLeft = 60;
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('streak-val').innerText = `x${streak}`;
+            document.getElementById('timer-val').innerText = `${timeLeft}s`;
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isGameActive) return;
+                timeLeft--;
+                updateHUD();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            isGameActive = false;
+            clearInterval(timerInterval);
+            
+            // Calculate final statistics
+            const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+            
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-correct').innerText = correctCount;
+            document.getElementById('final-streak').innerText = `${maxStreak}x`;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+
+            saveHighScore(score);
+            renderHighScores();
+
+            gameOverModal.classList.remove('hidden');
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function resetGame() {
+            gameOverModal.classList.add('hidden');
+            resetStats();
+            isGameActive = true;
+            renderProblem();
+            startTimer();
+        }
+
+        /**
+         * MEDIAPIPE HANDS SETUP
+         */
+        function initMediaPipe() {
+            if (hands) return; // already initialized
+
+            hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+
+            hands.onResults(onHandResults);
+
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    if (inputMode === 'camera') {
+                        await hands.send({ image: videoElement });
+                    }
+                },
+                width: 1280,
+                height: 720
+            });
+
+            camera.start().catch(err => {
+                console.error("Camera access denied/failed:", err);
+                showToast("Kamera tidak dijumpai. Menukar ke Mod Tetikus.", "error");
+                inputMode = 'mouse';
+                updateInputModeUI();
+            });
+        }
+
+        function onHandResults(results) {
+            if (!isGameActive || inputMode !== 'camera') return;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Index Finger Tip is landmark #8
+                const indexTip = landmarks[8];
+
+                // Note: Video is mirrored horizontally
+                rawCursorX = (1 - indexTip.x) * window.innerWidth;
+                rawCursorY = indexTip.y * window.innerHeight;
+            }
+        }
+
+        /**
+         * MAIN GAME & RENDERING LOOP
+         */
+        function gameLoop() {
+            // Apply exponential smoothing to cursor coordinates
+            smoothCursorX += (rawCursorX - smoothCursorX) * SMOOTHING;
+            smoothCursorY += (rawCursorY - smoothCursorY) * SMOOTHING;
+
+            // Clear Overlay Canvas
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (isGameActive) {
+                // Check Collision with 4 Gift Boxes
+                checkHoverAndDwell();
+
+                // Render Magic Fingertip Cursor
+                renderCursor(smoothCursorX, smoothCursorY);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Render magical fingertip target glow
+        function renderCursor(x, y) {
+            canvasCtx.save();
+            
+            // Outer Pulsing Glow Circle
+            const gradient = canvasCtx.createRadialGradient(x, y, 5, x, y, 35);
+            gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)');
+            gradient.addColorStop(1, 'rgba(245, 158, 11, 0)');
+
+            canvasCtx.fillStyle = gradient;
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 35, 0, Math.PI * 2);
+            canvasCtx.fill();
+
+            // Inner Core Dot
+            canvasCtx.fillStyle = '#ffffff';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 7, 0, Math.PI * 2);
+            canvasCtx.fill();
+
+            // Label icon indicator
+            canvasCtx.fillStyle = '#f59e0b';
+            canvasCtx.font = '600 12px Fredoka, sans-serif';
+            canvasCtx.fillText(inputMode === 'camera' ? '☝️ Jari' : '🖱️ Pointer', x + 15, y + 4);
+
+            canvasCtx.restore();
+        }
+
+        /**
+         * DWELL & HOVER SELECTION LOGIC
+         */
+        function checkHoverAndDwell() {
+            if (isProcessingChoice) return;
+
+            let currentHovered = -1;
+
+            for (let i = 0; i < 4; i++) {
+                const boxEl = document.getElementById(`box-${i}`);
+                const rect = boxEl.getBoundingClientRect();
+
+                // Check AABB Box Collision
+                if (
+                    smoothCursorX >= rect.left &&
+                    smoothCursorX <= rect.right &&
+                    smoothCursorY >= rect.top &&
+                    smoothCursorY <= rect.bottom
+                ) {
+                    currentHovered = i;
+                    break;
+                }
+            }
+
+            const now = performance.now();
+
+            if (currentHovered !== -1) {
+                // Pointing at a box
+                if (hoveredBoxIndex !== currentHovered) {
+                    // Just started hovering this box
+                    hoveredBoxIndex = currentHovered;
+                    dwellStartTime = now;
+                    highlightBox(hoveredBoxIndex, true);
+                    playTickSound();
+                } else {
+                    // Continuing hover -> calculate progress
+                    const elapsed = now - dwellStartTime;
+                    const progress = Math.min(1.0, elapsed / DWELL_TIME_MS);
+                    updateBoxDwellProgress(hoveredBoxIndex, progress);
+
+                    if (elapsed >= DWELL_TIME_MS) {
+                        // Dwell complete! Select this box!
+                        selectBox(hoveredBoxIndex);
+                    }
+                }
+            } else {
+                // Not pointing at any box
+                if (hoveredBoxIndex !== -1) {
+                    highlightBox(hoveredBoxIndex, false);
+                    updateBoxDwellProgress(hoveredBoxIndex, 0);
+                    hoveredBoxIndex = -1;
+                    dwellStartTime = null;
+                }
+            }
+        }
+
+        function highlightBox(index, isHovered) {
+            for (let i = 0; i < 4; i++) {
+                const boxEl = document.getElementById(`box-${i}`);
+                if (i === index && isHovered) {
+                    boxEl.classList.add('hovered');
+                } else {
+                    boxEl.classList.remove('hovered');
+                }
+            }
+        }
+
+        function updateBoxDwellProgress(index, progress) {
+            const boxEl = document.getElementById(`box-${index}`);
+            const borderEl = boxEl.querySelector('.dwell-border');
+            if (borderEl) {
+                // SVG perimeter for rect is ~384
+                const totalDash = 384;
+                const offset = totalDash * (1 - progress);
+                borderEl.style.strokeDashoffset = offset;
+            }
+        }
+
+        // Direct Click Handler (for mouse/touch mode)
+        function handleBoxClick(index) {
+            if (!isGameActive || isProcessingChoice) return;
+            selectBox(index);
+        }
+
+        /**
+         * ANSWER VERIFICATION & FEEDBACK
+         */
+        function selectBox(index) {
+            isProcessingChoice = true;
+            totalAnswered++;
+
+            const boxEl = document.getElementById(`box-${index}`);
+            const isCorrect = (index === currentProblem.correctIndex);
+
+            if (isCorrect) {
+                // --- CORRECT ANSWER ---
+                correctCount++;
+                streak++;
+                if (streak > maxStreak) maxStreak = streak;
+
+                // Time-based score multiplier
+                const basePoints = 100;
+                const streakBonus = streak * 20;
+                const pointsEarned = basePoints + streakBonus;
+                score += pointsEarned;
+
+                // Add bonus time (+3 seconds for fast correct answer)
+                timeLeft = Math.min(99, timeLeft + 3);
+
+                updateHUD();
+                playCorrectSound();
+
+                // Visual Box Opening Effect
+                boxEl.classList.add('opening');
+                
+                // Trigger Confetti over chosen box
+                const rect = boxEl.getBoundingClientRect();
+                const originX = (rect.left + rect.width / 2) / window.innerWidth;
+                const originY = (rect.top + rect.height / 2) / window.innerHeight;
+                
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { x: originX, y: originY }
+                });
+
+                showToast(`+${pointsEarned} Poin! (+3s Masa)`, 'success');
+
+                setTimeout(() => {
+                    renderProblem();
+                }, 900);
+
+            } else {
+                // --- WRONG ANSWER ---
+                streak = 0; // Reset combo
+                score = Math.max(0, score - 30); // Penalty
+                updateHUD();
+                playWrongSound();
+
+                boxEl.classList.add('wrong');
+                showToast('Cuba Lagi! Kombo Terputus', 'error');
+
+                // Also highlight correct box briefly
+                const correctBox = document.getElementById(`box-${currentProblem.correctIndex}`);
+                correctBox.classList.add('hovered');
+
+                setTimeout(() => {
+                    renderProblem();
+                }, 1200);
+            }
+        }
+
+        // Toast Feedback Notification Banner
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('feedback-toast');
+            const bg = document.getElementById('feedback-bg');
+            const icon = document.getElementById('feedback-icon');
+            const text = document.getElementById('feedback-text');
+
+            text.innerText = message;
+
+            if (type === 'success') {
+                bg.className = 'px-6 py-2.5 rounded-2xl shadow-2xl border-2 border-green-400 bg-slate-900/90 text-green-300';
+                icon.innerText = '✨';
+            } else {
+                bg.className = 'px-6 py-2.5 rounded-2xl shadow-2xl border-2 border-rose-500 bg-slate-900/90 text-rose-300';
+                icon.innerText = '❌';
+            }
+
+            toast.classList.remove('opacity-0', '-translate-y-10', 'scale-90');
+            toast.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+                toast.classList.add('opacity-0', '-translate-y-10', 'scale-90');
+            }, 1100);
+        }
+
+        /**
+         * HIGH SCORES LOCALSTORAGE MANAGEMENT
+         */
+        function saveHighScore(newScore) {
+            let scores = JSON.parse(localStorage.getItem('pakar_tambah_scores') || '[]');
+            scores.push({
+                score: newScore,
+                date: new Date().toLocaleDateString('ms-MY')
+            });
+            scores.sort((a, b) => b.score - a.score);
+            scores = scores.slice(0, 5); // Keep top 5
+            localStorage.setItem('pakar_tambah_scores', JSON.stringify(scores));
+        }
+
+        function renderHighScores() {
+            const container = document.getElementById('high-scores-list');
+            const scores = JSON.parse(localStorage.getItem('pakar_tambah_scores') || '[]');
+            
+            if (scores.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 text-xs text-center py-1">Tiada rekod lagi.</div>';
+                return;
+            }
+
+            container.innerHTML = scores.map((s, idx) => `
+                <div class="flex justify-between items-center ${idx === 0 ? 'text-amber-300 font-bold' : 'text-slate-300'}">
+                    <span>${idx + 1}. ${s.date}</span>
+                    <span class="font-extrabold">${s.score} Poin</span>
+                </div>
+            `).join('');
+        }
+
+        // Initialize HUD on load
+        updateHUD();
+    </script>
+</body>
+</html>
